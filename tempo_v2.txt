@@ -1,0 +1,68 @@
+Configuration	tempo_v2
+STM32CubeMX 	4.18.0
+Date	01/05/2017
+MCU	STM32F042K6Ux
+
+
+
+PERIPHERALS	MODES	FUNCTIONS	PINS
+ADC	IN2	ADC_IN2	PA2
+I2C1	I2C	I2C1_SCL	PA9
+I2C1	I2C	I2C1_SDA	PA10
+RTC	Activate RTC Clock Source	RTC_VS_RTC_Activate	VP_RTC_VS_RTC_Activate
+RTC	RTC Enabled	RTC_VS_RTC_Calendar	VP_RTC_VS_RTC_Calendar
+RTC	Internal Alarm A	RTC_VS_RTC_Alarm_A_Intern	VP_RTC_VS_RTC_Alarm_A_Intern
+SPI1	Full-Duplex Master	SPI1_MISO	PB4
+SPI1	Full-Duplex Master	SPI1_MOSI	PB5
+SPI1	Full-Duplex Master	SPI1_SCK	PB3
+SYS	Serial_Wire	SYS_SWCLK	PA14
+SYS	Serial_Wire	SYS_SWDIO	PA13
+SYS	SysTick	SYS_VS_Systick	VP_SYS_VS_Systick
+TIM1	Internal Clock	TIM1_VS_ClockSourceINT	VP_TIM1_VS_ClockSourceINT
+USB	Device (FS)	USB_DM	PA11
+USB	Device (FS)	USB_DP	PA12
+
+
+
+Pin Nb	PINs	FUNCTIONs	LABELs
+8	PA2	ADC_IN2	BATT_SAMPLE
+9	PA3	GPIO_Output	GP_LED
+14	PB0	GPIO_Input	USR_BTN
+19	PA9	I2C1_SCL	
+20	PA10	I2C1_SDA	
+21	PA11	USB_DM	
+22	PA12	USB_DP	
+23	PA13	SYS_SWDIO	
+24	PA14	SYS_SWCLK	
+25	PA15*	SPI1_NSS	SPI_CS
+26	PB3	SPI1_SCK	
+27	PB4	SPI1_MISO	
+28	PB5	SPI1_MOSI	
+
+
+
+SOFTWARE PROJECT
+
+Project Settings : 
+Project Name : tempo_v2
+Project Folder : C:\Users\maor\Desktop\test\tempo_v2
+Toolchain / IDE : TrueSTUDIO
+Firmware Package Name and Version : STM32Cube FW_F0 V1.7.0
+
+
+Code Generation Settings : 
+STM32Cube Firmware Library Package : Copy only the necessary library files
+Generate peripheral initialization as a pair of '.c/.h' files per peripheral : No
+Backup previously generated files when re-generating : No
+Delete previously generated files when not re-generated : Yes
+Set all free pins as analog (to optimize the power consumption) : No
+
+
+Toolchains Settings : 
+Compiler Optimizations : Balanced Size/Speed
+
+
+
+
+
+
