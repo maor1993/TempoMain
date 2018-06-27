@@ -27,7 +27,7 @@ void init_icd()
 
 void BuildAndSendStatusMsg()
 {
-	CDC_Transmit_FS((uint8_t*)IcdStatus,sizeof(usb_status_msg_type));
+	//CDC_Transmit_FS((uint8_t*)IcdStatus,sizeof(usb_status_msg_type));
 }
 
 

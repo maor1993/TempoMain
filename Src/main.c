@@ -53,7 +53,7 @@
 #include "lm75.h"
 #include "tm_stm32f4_fonts.h"
 #include "SST26VF032.h"
-
+#include "timer14_driver.h"
 
 
 
@@ -79,18 +79,24 @@ void save_to_flash(uint8_t nData,uint16_t nPtr);
 
 uint32_t nCurrentseconds;
 uint32_t nLastsampletime;
+uint32_t nTimes=0;
+uint32_t nNumofLoops;
+uint32_t nLastLooptime=0;
 uint16_t nCurrentflashloc=0;
 
 const uint8_t nTimediffs[] = {1,5,10,30,60};
-
+const uint16_t nTimValues[] ={250,1250,2500,7500,15000};
 
 extern I2C_TypeDef* pI2c;
 extern EXTI_TypeDef* pEXTI;
+extern TIM_TypeDef* pTIM14;
+
 
 GPIO_TypeDef* pGP_LED = GP_LED_GPIO_Port;
 GPIO_TypeDef* pGP_BTN = USR_BTN_GPIO_Port;
 GPIO_TypeDef* pGP_I2C = GPIOA;
 GPIO_TypeDef* pGP_SPI = GPIOB;
+
 
 
 extern   volatile sst_flash_handler_type sHandler;
@@ -142,8 +148,27 @@ void EXTI0_1_IRQHandler()
 
 
 
+//timer interrupt handler
+void TIM14_IRQHandler()
+{
+	//if we're here, device should have woken up.
+	//clear the interrupt and let the device go.
+	_TIMER14_CLEAR_IRQ();
+
+	HAL_NVIC_ClearPendingIRQ(TIM14_IRQn);
+	//reset stop the counter and reset its value.
+
+	//todo: values needed for 1,5,20,60 secs of delay per timer.
 
 
+	_TIMER14_STOP();
+	_TIMER14_SET_COUNTER(0);
+
+	//some calcs:
+	//if pclk is 8Mhz-> prescale by 64K -> 8msec per cnt then:
+	//60 secs is 7500 counts.
+
+}
 
 
 
@@ -163,23 +188,29 @@ int main(void)
   MX_GPIO_Init();
  // MX_ADC_Init();
   MX_I2C1_Init();
-//  MX_RTC_Init();
+  //MX_RTC_Init();
   MX_SPI1_Init();
-  MX_TIM1_Init();
+  //MX_TIM1_Init();
+  TIM14_init();
   MX_USB_DEVICE_Init();
   TM_SSD1306_Init();
 
   res = sst_flash_init();
 
-  sst_flash_write_block_proc();
-  sst_flash_read_block_proc();
-  sst_flash_write_enable();
-  sst_flash_read_status();
+
+  //todo: lock font region and enable writing for others.
+//  sst_flash_write_block_proc();
+//  sst_flash_read_block_proc();
+//  sst_flash_write_enable();
+//  sst_flash_read_status();
 
   	  init_icd();
 
 
+  volatile uint32_t clk;
+  clk = HAL_RCC_GetPCLK1Freq();
 
+  _TIMER14_SET_COMPARE(15000);
 
   sSysHandler.eMainstate = main_screen_state;
   sSysHandler.bLcdoff = 0;
@@ -187,12 +218,20 @@ int main(void)
   nLastsampletime = 0;
   while (1)
   {
-
 	  sSysHandler.nCurrentTemp = lm75_get_temp_raw();
 	  logTemp();
 	  update_lcd();
 	  nCurrentseconds = HAL_GetTick();
-	  HAL_Delay(100);
+
+	  //if lcd is off and we're logging, we can enter low power mode.
+	  if(sSysHandler.bLcdoff )//&& sSysHandler.bLog)
+	  {
+		  //enable timer interrupt
+		  _TIMER14_START();
+
+
+		  __WFI();
+	  }
 
   /* USER CODE BEGIN 3 */
 
@@ -454,7 +493,7 @@ void update_lcd()
 	case usb_state:
 	{
 
-		CDC_Transmit_FS((uint8_t*)IcdStatus,sizeof(usb_status_msg_type));
+		//CDC_Transmit_FS((uint8_t*)IcdStatus,sizeof(usb_status_msg_type));
 
 
 
@@ -484,6 +523,9 @@ void update_lcd()
 
 void logTemp()
 {
+	//todo: change this code to interrupt.
+
+
 	//check if temp logging is enabled
 	if(sSysHandler.bLog)
 	{

@@ -24,6 +24,7 @@ extern	GPIO_TypeDef* pGP_I2C ;
 extern GPIO_TypeDef* pGP_SPI;
 extern I2C_TypeDef* pI2c;
 static RCC_TypeDef* pRCC =  RCC;
+TIM_TypeDef* pTIM14 = TIM14;
 EXTI_TypeDef* pEXTI = EXTI;
 SYSCFG_TypeDef* pSYSCFG = SYSCFG;
 /* Private variables ---------------------------------------------------------*/
@@ -137,12 +138,6 @@ void SystemClock_Config(void)
 	__I2C1_FORCE_RESET();
 	__I2C1_RELEASE_RESET();
 
-
-
-
-
-
-
 	pI2c->CR1 = 0;//disable the peripheral before configuring.
 
 	//set the relevant pins to i2c mode.
@@ -166,69 +161,6 @@ void SystemClock_Config(void)
 	pI2c->CR1 |= I2C_PECR_PEC_Msk;
 }
 
-/* RTC init function */
- void MX_RTC_Init(void)
-{
-
-  RTC_TimeTypeDef sTime;
-  RTC_DateTypeDef sDate;
-  RTC_AlarmTypeDef sAlarm;
-
-    /**Initialize RTC Only
-    */
-  hrtc.Instance = RTC;
-  hrtc.Init.HourFormat = RTC_HOURFORMAT_24;
-  hrtc.Init.AsynchPrediv = 127;
-  hrtc.Init.SynchPrediv = 255;
-  hrtc.Init.OutPut = RTC_OUTPUT_DISABLE;
-  hrtc.Init.OutPutPolarity = RTC_OUTPUT_POLARITY_HIGH;
-  hrtc.Init.OutPutType = RTC_OUTPUT_TYPE_OPENDRAIN;
-  if (HAL_RTC_Init(&hrtc) != HAL_OK)
-  {
-    Error_Handler();
-  }
-
-    /**Initialize RTC and set the Time and Date
-    */
-  sTime.Hours = 0x0;
-  sTime.Minutes = 0x0;
-  sTime.Seconds = 0x0;
-  sTime.DayLightSaving = RTC_DAYLIGHTSAVING_NONE;
-  sTime.StoreOperation = RTC_STOREOPERATION_RESET;
-  if (HAL_RTC_SetTime(&hrtc, &sTime, RTC_FORMAT_BCD) != HAL_OK)
-  {
-    Error_Handler();
-  }
-
-  sDate.WeekDay = RTC_WEEKDAY_MONDAY;
-  sDate.Month = RTC_MONTH_JANUARY;
-  sDate.Date = 0x1;
-  sDate.Year = 0x0;
-
-  if (HAL_RTC_SetDate(&hrtc, &sDate, RTC_FORMAT_BCD) != HAL_OK)
-  {
-    Error_Handler();
-  }
-
-    /**Enable the Alarm A
-    */
-  sAlarm.AlarmTime.Hours = 0x0;
-  sAlarm.AlarmTime.Minutes = 0x0;
-  sAlarm.AlarmTime.Seconds = 0x0;
-  sAlarm.AlarmTime.SubSeconds = 0x0;
-  sAlarm.AlarmTime.DayLightSaving = RTC_DAYLIGHTSAVING_NONE;
-  sAlarm.AlarmTime.StoreOperation = RTC_STOREOPERATION_RESET;
-  sAlarm.AlarmMask = RTC_ALARMMASK_NONE;
-  sAlarm.AlarmSubSecondMask = RTC_ALARMSUBSECONDMASK_ALL;
-  sAlarm.AlarmDateWeekDaySel = RTC_ALARMDATEWEEKDAYSEL_DATE;
-  sAlarm.AlarmDateWeekDay = 0x1;
-  sAlarm.Alarm = RTC_ALARM_A;
-  if (HAL_RTC_SetAlarm(&hrtc, &sAlarm, RTC_FORMAT_BCD) != HAL_OK)
-  {
-    Error_Handler();
-  }
-
-}
 
 /* SPI1 init function */
  void MX_SPI1_Init(void)
@@ -313,6 +245,34 @@ void SystemClock_Config(void)
         * EVENT_OUT
         * EXTI
 */
+
+
+void TIM14_init()
+{
+	//enable clk for timer.
+	__HAL_RCC_TIM14_CLK_ENABLE();
+
+
+	//enable interrupt for timer 14
+	pTIM14->DIER |= 2;
+
+	//set prescaler to 64k
+	pTIM14->PSC = 64000;
+
+
+	HAL_NVIC_SetPriority(TIM14_IRQn,1,0);
+
+	//enable interrupt in nvic.
+
+
+	HAL_NVIC_EnableIRQ(TIM14_IRQn);
+
+
+
+
+
+
+}
 
  void MX_GPIO_Init(void)
 {
