@@ -54,7 +54,8 @@
 #include "tm_stm32f4_fonts.h"
 #include "SST26VF032.h"
 #include "timer14_driver.h"
-
+#include "FlashMng.h"
+#include "usb_comm_icd.h"
 
 
 /* USER CODE END PV */
@@ -67,6 +68,7 @@ void update_lcd();
 void logTemp();
 void checkforusbmessages();
 void Checkbatt();
+void ReportToPC();
 void save_to_flash(uint8_t nData,uint16_t nPtr);
 
 
@@ -91,7 +93,6 @@ extern I2C_TypeDef* pI2c;
 extern EXTI_TypeDef* pEXTI;
 extern TIM_TypeDef* pTIM14;
 
-
 GPIO_TypeDef* pGP_LED = GP_LED_GPIO_Port;
 GPIO_TypeDef* pGP_BTN = USR_BTN_GPIO_Port;
 GPIO_TypeDef* pGP_I2C = GPIOA;
@@ -104,6 +105,10 @@ extern   volatile sst_flash_handler_type sHandler;
 char cWorkingStr[6];
 uint8_t res;
 
+void (*SysMemBootJump)(void);
+#define SYSMEM_RESET_VECTOR            0x1fffC804
+#define RESET_TO_BOOTLOADER_MAGIC_CODE 0xDEADBEEF
+#define BOOTLOADER_STACK_POINTER       0x20002250
 
 
 volatile uint32_t nBtnPressTick;
@@ -128,7 +133,17 @@ void EXTI0_1_IRQHandler()
 		}
 		else
 		{
-			sSysHandler.nBtnPressed = BTN_PRESS_SHORT;
+
+			//check if we need to turn on the lcd.
+			if(sSysHandler.bLcdoff && (sSysHandler.eMainstate == main_screen_state))
+			{
+				sSysHandler.bLcdoff = 0;
+				SSD1306_WRITECOMMAND(0xAF);
+			}
+			else
+			{
+				sSysHandler.nBtnPressed = BTN_PRESS_SHORT;
+			}
 		}
 		bBtnPressed = 0;
 		pEXTI->FTSR |= 1;
@@ -163,7 +178,8 @@ void TIM14_IRQHandler()
 
 	_TIMER14_STOP();
 	_TIMER14_SET_COUNTER(0);
-
+	__I2C1_CLK_ENABLE();
+	__SPI1_CLK_ENABLE();
 	//some calcs:
 	//if pclk is 8Mhz-> prescale by 64K -> 8msec per cnt then:
 	//60 secs is 7500 counts.
@@ -188,9 +204,7 @@ int main(void)
   MX_GPIO_Init();
  // MX_ADC_Init();
   MX_I2C1_Init();
-  //MX_RTC_Init();
   MX_SPI1_Init();
-  //MX_TIM1_Init();
   TIM14_init();
   MX_USB_DEVICE_Init();
   TM_SSD1306_Init();
@@ -198,45 +212,69 @@ int main(void)
   res = sst_flash_init();
 
 
+
+  sSysHandler.bRecordingFull = flash_mgmt_init();
+
   //todo: lock font region and enable writing for others.
-//  sst_flash_write_block_proc();
-//  sst_flash_read_block_proc();
-//  sst_flash_write_enable();
-//  sst_flash_read_status();
+  sst_flash_write_enable();
+  sst_flash_write_block_proc();
+  init_icd();
 
-  	  init_icd();
-
-
-  volatile uint32_t clk;
-  clk = HAL_RCC_GetPCLK1Freq();
-
-  _TIMER14_SET_COMPARE(15000);
+  _TIMER14_SET_COMPARE(1875);
 
   sSysHandler.eMainstate = main_screen_state;
   sSysHandler.bLcdoff = 0;
   sSysHandler.bLog = 0;
   nLastsampletime = 0;
+
   while (1)
   {
 	  sSysHandler.nCurrentTemp = lm75_get_temp_raw();
 	  logTemp();
-	  update_lcd();
 	  nCurrentseconds = HAL_GetTick();
+
+
+	  if(sSysHandler.eMainstate == usb_state)
+	  {
+		  ReportToPC();
+	  }
 
 	  //if lcd is off and we're logging, we can enter low power mode.
 	  if(sSysHandler.bLcdoff )//&& sSysHandler.bLog)
 	  {
 		  //enable timer interrupt
-		  _TIMER14_START();
-
-
-		  __WFI();
+		  //_TIMER14_START();
+		  //set the core clk to 1Mhz
+		  //RCC->CFGR |= RCC_CFGR_HPRE_3|RCC_CFGR_HPRE_0;
+		  //__WFI();
+	  }
+	  else
+	  {
+		  update_lcd();
 	  }
 
   /* USER CODE BEGIN 3 */
 
   }
   /* USER CODE END 3 */
+
+}
+
+void ReportToPC()
+{
+	static uint32_t nLastTempReport=0;
+	uint32_t nCurrentTime =HAL_GetTick();
+
+
+
+	if((nCurrentTime - nLastTempReport) > 1000)
+	{
+		BuildAndSendStatusMsg();
+	}
+
+
+
+
 
 }
 
@@ -308,7 +346,7 @@ void update_lcd()
 
 
 		TM_SSD1306_GotoXY(30,0);
-		TM_SSD1306_Puts("settings",&TM_Font_7x10,SSD1306_COLOR_WHITE);
+		TM_SSD1306_Puts("Settings",&TM_Font_7x10,SSD1306_COLOR_WHITE);
 		TM_SSD1306_DrawLine(0,11,128,11,SSD1306_COLOR_WHITE);
 
 		//menu items
@@ -324,13 +362,18 @@ void update_lcd()
 			TM_SSD1306_DrawFilledRectangle(0,12,128,10,SSD1306_COLOR_BLACK);
 			bColor=1;
 		}
-		if(sSysHandler.bLog)
+
+		if(sSysHandler.bRecordingFull)
 		{
-			TM_SSD1306_Puts("stop recording",&TM_Font_7x10,bColor);
+			TM_SSD1306_Puts("Recordings Full",&TM_Font_7x10,bColor);
+		}
+		else if(sSysHandler.bLog)
+		{
+			TM_SSD1306_Puts("Stop Recording",&TM_Font_7x10,bColor);
 		}
 		else
 		{
-			TM_SSD1306_Puts("start recording",&TM_Font_7x10,bColor);
+			TM_SSD1306_Puts("Start Recording",&TM_Font_7x10,bColor);
 		}
 
 
@@ -345,7 +388,7 @@ void update_lcd()
 			TM_SSD1306_DrawFilledRectangle(0,22,128,10,SSD1306_COLOR_BLACK);
 			bColor=1;
 		}
-		TM_SSD1306_Puts("recording setup",&TM_Font_7x10,bColor);
+		TM_SSD1306_Puts("Recording Setup",&TM_Font_7x10,bColor);
 
 		TM_SSD1306_GotoXY(42,32);
 		if(sSysHandler.nCurrentmenuitem == 2)
@@ -358,7 +401,7 @@ void update_lcd()
 			TM_SSD1306_DrawFilledRectangle(0,32,128,10,SSD1306_COLOR_BLACK);
 			bColor=1;
 		}
-		TM_SSD1306_Puts("exit",&TM_Font_7x10,bColor);
+		TM_SSD1306_Puts("Exit",&TM_Font_7x10,bColor);
 
 		//check button presses.
 		if(sSysHandler.nBtnPressed == BTN_PRESS_LONG)
@@ -367,8 +410,21 @@ void update_lcd()
 				switch(sSysHandler.nCurrentmenuitem)
 				{
 				case 0:
-					//enable/disable the recording mode.
-					sSysHandler.bLog ? sSysHandler.bLog--:sSysHandler.bLog++;
+
+					if(!sSysHandler.bRecordingFull)
+					{
+						//enable/disable the recording mode.
+						if(sSysHandler.bLog)
+						{
+							sSysHandler.bRecordingFull = flash_stop_recording();
+						}
+						else
+						{
+							flash_start_recording(sSysHandler.nSecondsBetweenSamplesidx);
+						}
+
+						sSysHandler.bLog ? sSysHandler.bLog--:sSysHandler.bLog++;
+					}
 					break;
 				case 1:
 					sSysHandler.eMainstate = record_setup_state;
@@ -385,8 +441,8 @@ void update_lcd()
 			}
 		else if(sSysHandler.nBtnPressed == BTN_PRESS_SHORT)
 			{
-				//move to the next item
 			sSysHandler.nCurrentmenuitem == 2 ? sSysHandler.nCurrentmenuitem=0:sSysHandler.nCurrentmenuitem++;
+
 			//button press was caught, remove press.
 			sSysHandler.nBtnPressed = BTN_PRESS_NONE;
 
@@ -438,7 +494,7 @@ void update_lcd()
 					TM_SSD1306_Puts("Led off",&TM_Font_7x10,bColor);
 				}
 
-				TM_SSD1306_GotoXY(42,32);
+				TM_SSD1306_GotoXY(14,32);
 				if(sSysHandler.nCurrentmenuitem == 2)
 				{
 					TM_SSD1306_DrawFilledRectangle(0,32,128,10,SSD1306_COLOR_WHITE);
@@ -449,7 +505,21 @@ void update_lcd()
 					TM_SSD1306_DrawFilledRectangle(0,32,128,10,SSD1306_COLOR_BLACK);
 					bColor=1;
 				}
-				TM_SSD1306_Puts("exit",&TM_Font_7x10,bColor);
+				TM_SSD1306_Puts("Delete Recs",&TM_Font_7x10,bColor);
+
+
+				TM_SSD1306_GotoXY(42,42);
+				if(sSysHandler.nCurrentmenuitem == 3)
+				{
+					TM_SSD1306_DrawFilledRectangle(0,42,128,10,SSD1306_COLOR_WHITE);
+					bColor=0;
+				}
+				else
+				{
+					TM_SSD1306_DrawFilledRectangle(0,42,128,10,SSD1306_COLOR_BLACK);
+					bColor=1;
+				}
+				TM_SSD1306_Puts("Exit",&TM_Font_7x10,bColor);
 
 
 
@@ -469,6 +539,14 @@ void update_lcd()
 							sSysHandler.bLedon ? sSysHandler.bLedon--:sSysHandler.bLedon++;
 
 							break;
+						case 2:
+							TM_SSD1306_Fill(SSD1306_COLOR_BLACK);
+							TM_SSD1306_GotoXY(0,30);
+							TM_SSD1306_Puts("Please Wait...",&TM_Font_7x10,SSD1306_COLOR_WHITE);
+							sSysHandler.eMainstate = flash_earse_state;
+							sSysHandler.nCurrentmenuitem = 0;
+
+							break;
 						default:
 							//exit the settings
 							TM_SSD1306_Fill(SSD1306_COLOR_BLACK);
@@ -481,7 +559,7 @@ void update_lcd()
 				else if(sSysHandler.nBtnPressed == BTN_PRESS_SHORT)
 					{
 						//move to the next item
-					sSysHandler.nCurrentmenuitem == 2 ? sSysHandler.nCurrentmenuitem=0:sSysHandler.nCurrentmenuitem++;
+					sSysHandler.nCurrentmenuitem == 3 ? sSysHandler.nCurrentmenuitem=0:sSysHandler.nCurrentmenuitem++;
 					//button press was caught, remove press.
 					sSysHandler.nBtnPressed = BTN_PRESS_NONE;
 
@@ -490,12 +568,19 @@ void update_lcd()
 		break;
 	}
 
+	case flash_earse_state:
+		flash_invalidate_headers();
+		flash_erase_recordings();
+		sSysHandler.bRecordingFull = flash_mgmt_init();
+
+		TM_SSD1306_Fill(SSD1306_COLOR_BLACK);
+		sSysHandler.eMainstate = main_screen_state;
+
+
+		break;
+
 	case usb_state:
 	{
-
-		//CDC_Transmit_FS((uint8_t*)IcdStatus,sizeof(usb_status_msg_type));
-
-
 
 	}
 
@@ -540,9 +625,7 @@ void logTemp()
 			//update last sample time.
 			nLastsampletime = nCurrentseconds;
 			//log current temperature;
-			save_to_flash(sSysHandler.nCurrentTemp,nCurrentflashloc);
-			nCurrentflashloc++;
-
+			flash_save_sample(sSysHandler.nCurrentTemp);
 			if(sSysHandler.bLedon)
 			{
 				pGP_LED->ODR &= ~GPIO_ODR_3;

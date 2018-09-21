@@ -72,7 +72,7 @@
 
 
 #define TICKS_PER_SEC 2000
-typedef enum {init_state,main_screen_state,usb_state,config_state,record_setup_state,lcdoff_state} main_state_type;
+typedef enum {init_state,main_screen_state,usb_state,config_state,record_setup_state,lcdoff_state,flash_earse_state} main_state_type;
 
 typedef struct{
 	main_state_type eMainstate;
@@ -82,6 +82,7 @@ typedef struct{
 
 	uint16_t nCurrentTemp;
 
+	uint8_t bRecordingFull;
 	union
 	{
 		uint8_t nStatusByte;

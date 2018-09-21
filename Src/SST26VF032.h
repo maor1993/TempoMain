@@ -121,12 +121,15 @@ uint8_t sst_flash_read_cmd(uint32_t nAddr,uint8_t nBytes,uint8_t* pData);
 
 
 uint8_t sst_flash_write_cmd(uint32_t nAddr,uint8_t nbytes,uint8_t* pData);
+uint8_t sst_flash_write_cmd_blocking(uint32_t nAddr,uint8_t nbytes,uint8_t* pData,uint8_t nRefreshTicks);
+
 
 void sst_flash_read_status();
 void sst_flash_write_status(uint8_t nStatusbyte);
 
 void sst_flash_wakeup();
-
+void sst_flash_erase_sector_blocking(uint32_t nAddr);
+void sst_flash_write_block_proc();
 
 uint8_t sst_flash_init();
 /*-----------------------------`-----------------*/

@@ -57,27 +57,14 @@ void SystemClock_Config(void)
   RCC->CFGR2 = RCC_PREDIV_DIV2;
 
   //step four: turn on the pll and wait for it to be ready.
-  RCC->CR |= RCC_CR_PLLON;
-  while(!((RCC->CR)&RCC_CR_PLLRDY_Msk));
+  //RCC->CR |= RCC_CR_PLLON;
+  //while(!((RCC->CR)&RCC_CR_PLLRDY_Msk));
 
   //at this point all basic setup was complete, now to setup peripheral clocks.
 
   //set the system clk to the pll output.
-  RCC->CFGR |= RCC_CFGR_SW_PLL;
+  RCC->CFGR |= RCC_CFGR_SW_HSI;
 
-
-
-  //todo: check if RTC needs this function still since the others are set correctly by default.
-//  PeriphClkInit.PeriphClockSelection = RCC_PERIPHCLK_USB|RCC_PERIPHCLK_I2C1
-//                              |RCC_PERIPHCLK_RTC;
-//  PeriphClkInit.I2c1ClockSelection = RCC_I2C1CLKSOURCE_HSI;
-//  PeriphClkInit.RTCClockSelection = RCC_RTCCLKSOURCE_LSI;
-//  PeriphClkInit.UsbClockSelection = RCC_USBCLKSOURCE_HSI48;
-//
-//  if (HAL_RCCEx_PeriphCLKConfig(&PeriphClkInit) != HAL_OK)
-//  {
-//    Error_Handler();
-//  }
 
     /**Configure the Systick interrupt time
     */

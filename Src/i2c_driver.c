@@ -91,8 +91,8 @@ uint8_t i2c_write_blocking(uint8_t* pData,uint8_t nSize,uint32_t nTimeout,uint8_
 		//wait for current transfer to complete.
 		if (WaitForFlag(&(pI2c->ISR), I2C_ISR_TXIS_Msk, 1,nTimeout, tickstart) != 0)
 		{
-			while(1);
-			//return 1;
+			//while(1);
+			return 1;
 		}
 
 		pI2c->TXDR = *(pData + (nSize - i));

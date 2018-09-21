@@ -82,7 +82,7 @@ uint8_t TM_SSD1306_Init(void) {
 	/* Init I2C */
 	int i;
 	/* A little delay */
-	Delayms(100);
+	HAL_Delay(100);
 	
 	/* Init LCD */
 //	SSD1306_WRITECOMMAND( 0xAE); //display off

@@ -65,6 +65,9 @@
 /** @defgroup USBD_CDC_IF_Exported_Defines
   * @{
   */ 
+
+#define APP_RX_DATA_SIZE  64
+#define APP_TX_DATA_SIZE  4
 /* USER CODE BEGIN EXPORTED_DEFINES */
 /* USER CODE END EXPORTED_DEFINES */
 
