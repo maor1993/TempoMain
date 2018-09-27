@@ -73,11 +73,11 @@ uint8_t flash_start_recording(uint8_t nTimeDiff)
 		//step 1: update previous header
 		if(sCurrentHeader.nRecordnum != 0)
 		{
-			sst_flash_read_cmd(FLASH_FILE_HEADERS_ADDR+(sCurrentHeader.nRecordnum-1)*sizeof(flash_file_header_type),sizeof(flash_file_header_type),(uint8_t*)&(sNextHeader.Signature));
-			sNextHeader.bLastRecording = 0;
-
-			sst_flash_erase_sector_blocking(FLASH_FILE_HEADERS_ADDR+(sCurrentHeader.nRecordnum-1));
-			sst_flash_write_cmd_blocking(FLASH_FILE_HEADERS_ADDR+(sCurrentHeader.nRecordnum-1)*sizeof(flash_file_header_type),sizeof(flash_file_header_type),(uint8_t*)&(sNextHeader.Signature),10);
+//			sst_flash_read_cmd(FLASH_FILE_HEADERS_ADDR+(sCurrentHeader.nRecordnum-1)*0x1000,sizeof(flash_file_header_type),(uint8_t*)&(sNextHeader.Signature));
+//			sNextHeader.bLastRecording = 0;
+//
+//			sst_flash_erase_sector_blocking(FLASH_FILE_HEADERS_ADDR+(sCurrentHeader.nRecordnum-1));
+//			sst_flash_write_cmd_blocking(FLASH_FILE_HEADERS_ADDR+(sCurrentHeader.nRecordnum-1)*0x1000,sizeof(flash_file_header_type),(uint8_t*)&(sNextHeader.Signature),10);
 		}
 
 
@@ -101,6 +101,7 @@ uint8_t flash_stop_recording()
 	}
 	else
 	{
+
 		return 0;
 	}
 }
@@ -147,7 +148,7 @@ uint8_t flash_sync()
 uint8_t flash_invalidate_headers()
 {
 	//delete all headers.
-	uint8_t i = sCurrentHeader.nRecordnum;
+	uint8_t i = FLASH_MAX_HEADERS;
 
 
 	while(i--)

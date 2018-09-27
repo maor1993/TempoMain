@@ -67,12 +67,12 @@
 #define BTN_PRESS_NONE 0
 #define BTN_PRESS_SHORT 1
 #define BTN_PRESS_LONG 2
-#define BTN_PRESS_LONG_TIME 1000 //test this.
+#define BTN_PRESS_LONG_TIME 700 //test this.
 /* USER CODE BEGIN Private defines */
 
 
 #define TICKS_PER_SEC 2000
-typedef enum {init_state,main_screen_state,usb_state,config_state,record_setup_state,lcdoff_state,flash_earse_state} main_state_type;
+typedef enum {init_state,main_screen_state,usb_connected_state,usb_disconnected_state,usb_state,config_state,record_setup_state,lcdoff_state,flash_earse_state} main_state_type;
 
 typedef struct{
 	main_state_type eMainstate;

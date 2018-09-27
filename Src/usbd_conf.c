@@ -55,7 +55,6 @@ PCD_HandleTypeDef hpcd_USB_FS;
 void Error_Handler(void);
 
 /* USER CODE BEGIN 0 */
-
 /* USER CODE END 0 */
 
 /* Private function prototypes -----------------------------------------------*/
@@ -760,12 +759,10 @@ void HAL_PCDEx_SetConnectionState(PCD_HandleTypeDef *hpcd, uint8_t state)
   if (state == 1)
   {
     /* Configure Low Connection State */
-	
-  }
+}
   else
   {
     /* Configure High Connection State */
-   
   } 
 /* USER CODE END 6 */
 }

@@ -87,7 +87,8 @@ uint32_t nLastLooptime=0;
 uint16_t nCurrentflashloc=0;
 
 const uint8_t nTimediffs[] = {1,5,10,30,60};
-const uint16_t nTimValues[] ={250,1250,2500,7500,15000};
+const uint16_t nTim8MhzValues[] ={250,1250,2500,7500,15000};
+const uint16_t nTim1MhzValues[] ={31,156,312,937,1875};
 
 extern I2C_TypeDef* pI2c;
 extern EXTI_TypeDef* pEXTI;
@@ -113,6 +114,7 @@ void (*SysMemBootJump)(void);
 
 volatile uint32_t nBtnPressTick;
 volatile uint8_t bBtnPressed=0;
+volatile uint8_t bDoLog=0;
 //user btn intterupt
 void EXTI0_1_IRQHandler()
 {
@@ -178,11 +180,11 @@ void TIM14_IRQHandler()
 
 	_TIMER14_STOP();
 	_TIMER14_SET_COUNTER(0);
-	__I2C1_CLK_ENABLE();
-	__SPI1_CLK_ENABLE();
-	//some calcs:
-	//if pclk is 8Mhz-> prescale by 64K -> 8msec per cnt then:
-	//60 secs is 7500 counts.
+
+	//set internal clk back to 8Mhz.
+	RCC->CFGR &= ~(RCC_CFGR_HPRE_3|RCC_CFGR_HPRE_0);
+
+	bDoLog= 1;
 
 }
 
@@ -210,17 +212,11 @@ int main(void)
   TM_SSD1306_Init();
 
   res = sst_flash_init();
-
-
-
   sSysHandler.bRecordingFull = flash_mgmt_init();
-
-  //todo: lock font region and enable writing for others.
   sst_flash_write_enable();
   sst_flash_write_block_proc();
   init_icd();
 
-  _TIMER14_SET_COMPARE(1875);
 
   sSysHandler.eMainstate = main_screen_state;
   sSysHandler.bLcdoff = 0;
@@ -233,23 +229,27 @@ int main(void)
 	  logTemp();
 	  nCurrentseconds = HAL_GetTick();
 
-
-	  if(sSysHandler.eMainstate == usb_state)
-	  {
+	  _TIMER14_START();
+	  //if(sSysHandler.bUsbconnected)
+	  //{
 		  ReportToPC();
-	  }
+	 // }
 
 	  //if lcd is off and we're logging, we can enter low power mode.
-	  if(sSysHandler.bLcdoff )//&& sSysHandler.bLog)
+	  if(sSysHandler.bLcdoff && sSysHandler.bLog)
 	  {
 		  //enable timer interrupt
-		  //_TIMER14_START();
+
 		  //set the core clk to 1Mhz
-		  //RCC->CFGR |= RCC_CFGR_HPRE_3|RCC_CFGR_HPRE_0;
-		  //__WFI();
+		  RCC->CFGR |= RCC_CFGR_HPRE_3|RCC_CFGR_HPRE_0;
+
+		  _TIMER14_SET_COUNTER(nTim1MhzValues[sSysHandler.nSecondsBetweenSamplesidx]);
+
+		  __WFI();
 	  }
 	  else
 	  {
+		  _TIMER14_SET_COUNTER(nTim8MhzValues[sSysHandler.nSecondsBetweenSamplesidx]);
 		  update_lcd();
 	  }
 
@@ -416,11 +416,14 @@ void update_lcd()
 						//enable/disable the recording mode.
 						if(sSysHandler.bLog)
 						{
-							sSysHandler.bRecordingFull = flash_stop_recording();
+							sSysHandler.bRecordingFull = flash_mgmt_init();
 						}
 						else
 						{
 							flash_start_recording(sSysHandler.nSecondsBetweenSamplesidx);
+							_TIMER14_SET_COMPARE(nTim8MhzValues[sSysHandler.nSecondsBetweenSamplesidx]);
+							_TIMER14_SET_COUNTER(0);
+							_TIMER14_START();
 						}
 
 						sSysHandler.bLog ? sSysHandler.bLog--:sSysHandler.bLog++;
@@ -579,8 +582,27 @@ void update_lcd()
 
 		break;
 
+	case usb_connected_state:
+	{
+		TM_SSD1306_Fill(SSD1306_COLOR_BLACK);
+		sSysHandler.bUsbconnected = 1;
+		sSysHandler.eMainstate = usb_state;
+
+		break;
+	}
+	case usb_disconnected_state:
+	{
+		TM_SSD1306_Fill(SSD1306_COLOR_BLACK);
+		sSysHandler.bUsbconnected = 0;
+		sSysHandler.eMainstate = main_screen_state;
+
+		break;
+	}
+
 	case usb_state:
 	{
+		TM_SSD1306_GotoXY(0,22);
+		TM_SSD1306_Puts("USB Connected.",&TM_Font_7x10,SSD1306_COLOR_WHITE);
 
 	}
 
@@ -608,15 +630,14 @@ void update_lcd()
 
 void logTemp()
 {
-	//todo: change this code to interrupt.
-
-
 	//check if temp logging is enabled
 	if(sSysHandler.bLog)
 	{
 		//check if required delta between samples has passed.
-		if(nLastsampletime  + nTimediffs[sSysHandler.nSecondsBetweenSamplesidx]*TICKS_PER_SEC  <= nCurrentseconds)
+		if(bDoLog)
 		{
+			bDoLog = 0;
+
 			if(sSysHandler.bLedon)
 			{
 				pGP_LED->ODR |= GPIO_ODR_3;
@@ -634,14 +655,3 @@ void logTemp()
 	}
 }
 
-void save_to_flash(uint8_t nData,uint16_t nPtr)
-{
-//	//save the data to flash.
-//	spi_flash_write_enable();
-//	spi_flash_write_cmd(SPI_FLASH_USER_MEMORY_START+nPtr,2,&nData);
-//	do
-//	{
-//	spi_flash_read_status();
-//	HAL_Delay(1);
-//	}while(sHandler.BUSY1); //todo: fix this.
-}

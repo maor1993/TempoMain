@@ -67,12 +67,13 @@
 #define FLASH_FILE_HEADERS_ADDR 0x008000
 #define FLASH_FILES_ADDR		0x100000
 
-#define FLASH_MAX_HEADERS 		2
+#define FLASH_MAX_HEADERS 		5 //todo: move this back to 200.
 
 #define FLASH_MAX_BLOCK			4000
 #define FLASH_MAX_FILE_SIZE		0x200000
 
 #define FLASH_HEADER_SIG 		0xfeedabba
+
 
 #define FLASH_RECORDING_SECTORS 0x200000/0x1000
 
@@ -86,9 +87,10 @@ typedef struct __attribute__ ((packed))
 	uint8_t nRecordnum;
 	uint8_t	bLastRecording;
 	uint8_t eTimeDiff;
+	uint8_t rsvd8;
 	uint16_t nNumOfSamples;
 	uint16_t nSectorStart;
-	uint8_t rsvd[5];
+	uint8_t rsvd[4];
 }flash_file_header_type;
 
 
