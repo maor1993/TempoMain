@@ -67,7 +67,7 @@
 #define FLASH_FILE_HEADERS_ADDR 0x008000
 #define FLASH_FILES_ADDR		0x100000
 
-#define FLASH_MAX_HEADERS 		5 //todo: move this back to 200.
+#define FLASH_MAX_HEADERS 		200
 
 #define FLASH_MAX_BLOCK			4000
 #define FLASH_MAX_FILE_SIZE		0x200000

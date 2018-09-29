@@ -102,8 +102,9 @@ GPIO_TypeDef* pGP_SPI = GPIOB;
 
 
 extern   volatile sst_flash_handler_type sHandler;
+extern volatile flash_file_header_type sCurrentHeader;
 
-char cWorkingStr[6];
+char cWorkingStr[8];
 uint8_t res;
 
 void (*SysMemBootJump)(void);
@@ -221,7 +222,6 @@ int main(void)
   sSysHandler.eMainstate = main_screen_state;
   sSysHandler.bLcdoff = 0;
   sSysHandler.bLog = 0;
-  nLastsampletime = 0;
 
   while (1)
   {
@@ -250,7 +250,7 @@ int main(void)
 	  else
 	  {
 		  _TIMER14_SET_COUNTER(nTim8MhzValues[sSysHandler.nSecondsBetweenSamplesidx]);
-		  update_lcd();
+		  update_lcd(); //todo: stop lcd communication while usb is connected.
 	  }
 
   /* USER CODE BEGIN 3 */
@@ -295,6 +295,9 @@ void update_lcd()
 		TM_SSD1306_Puts("Tempo",&TM_Font_7x10,SSD1306_COLOR_WHITE);
 		TM_SSD1306_DrawLine(0,11,128,11,SSD1306_COLOR_WHITE);
 
+
+
+
 		//if logging is on,
 
 		if(sSysHandler.bLog)
@@ -308,6 +311,11 @@ void update_lcd()
 		itoa((((sSysHandler.nCurrentTemp)&0xff00)>>8),cWorkingStr,10);
 		TM_SSD1306_GotoXY(40,30);
 		TM_SSD1306_Puts(cWorkingStr,&TM_Font_16x26,SSD1306_COLOR_WHITE);
+
+		TM_SSD1306_GotoXY(0,52);
+		itoa(sCurrentHeader.nRecordnum,cWorkingStr,10);
+		strcat(cWorkingStr,"/200");
+		TM_SSD1306_Puts(cWorkingStr,&TM_Font_7x10,SSD1306_COLOR_WHITE);
 
 		//check if long press occured
 		if(sSysHandler.nBtnPressed == BTN_PRESS_LONG)
@@ -642,9 +650,6 @@ void logTemp()
 			{
 				pGP_LED->ODR |= GPIO_ODR_3;
 			}
-
-			//update last sample time.
-			nLastsampletime = nCurrentseconds;
 			//log current temperature;
 			flash_save_sample(sSysHandler.nCurrentTemp);
 			if(sSysHandler.bLedon)

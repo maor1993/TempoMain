@@ -59,6 +59,7 @@ uint8_t flash_mgmt_init()
 			sst_flash_read_cmd(FLASH_FILE_HEADERS_ADDR+(nCurrentRecNum*0x1000),sizeof(flash_file_header_type),(uint8_t*)&(sNextHeader.Signature));
 		}
 	}
+//todo: add checks if  sector start is out of range.
 
 	//if we're here, we're full...
 	return 1;
@@ -111,6 +112,7 @@ uint8_t flash_save_sample(uint16_t nSample)
 
 	uint32_t nAddr;
 
+	uint16_t nVerify;
 	nAddr = FLASH_FILES_ADDR + (sCurrentHeader.nSectorStart * 0x1000) + (sCurrentHeader.nNumOfSamples * 2);
 
 
@@ -118,8 +120,13 @@ uint8_t flash_save_sample(uint16_t nSample)
 	sst_flash_write_cmd_blocking(nAddr,2,(uint8_t*)&nSample,10);
 
 
+	//readbback the samples.
+	sst_flash_read_cmd(nAddr,2,&nVerify);
+
 	//update the amount of samples in header.
 	sCurrentHeader.nNumOfSamples++;
+
+
 
 
 	//update header.
@@ -148,10 +155,10 @@ uint8_t flash_sync()
 uint8_t flash_invalidate_headers()
 {
 	//delete all headers.
-	uint8_t i = FLASH_MAX_HEADERS;
+	uint8_t i ;
 
 
-	while(i--)
+	for(i=0;i<FLASH_MAX_HEADERS;i++)
 	{
 		sst_flash_erase_sector_blocking(FLASH_FILE_HEADERS_ADDR+(i*0x1000));
 	}
@@ -161,11 +168,11 @@ uint8_t flash_invalidate_headers()
 
 uint8_t flash_erase_recordings()
 {
-	uint16_t i = FLASH_RECORDING_SECTORS;
+	uint16_t i ;
 
 
 
-	while(i--)
+	for(i=0;i<FLASH_RECORDING_SECTORS;i++)
 	{
 		sst_flash_erase_sector_blocking(FLASH_FILES_ADDR+(i*0x1000));
 	}

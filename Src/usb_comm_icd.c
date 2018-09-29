@@ -84,7 +84,7 @@ void process_rx_msg()
 	if((UserRxBufferFS[3] == 0x9a) && (UserRxBufferFS[2] == 0x5b) && (UserRxBufferFS[1]== 0xc0) && (UserRxBufferFS[0]==0xdd))
 	{
 		//buffer is aligned, get size from buffer and copy to template.
-		uint8_t nLen = UserRxBufferFS[5];
+		uint8_t nLen = UserRxBufferFS[7];
 
 		memcpy((uint8_t*)&(sRxIcdMsg.sHeader.nPremble),&UserRxBufferFS[0],sizeof(usb_msg_header_type)+nLen);
 		ParseIcdMsg();
@@ -141,10 +141,14 @@ void ParseIcdMsg()
 
 
 				//copy 16 samples to message.
+
+				//todo: race condition here...
 				sst_flash_read_cmd(msg->nFlashOffset,32,&(IcdGetSam.nSamples[0]));
 
+				IcdGetSam.nRequestedSamples = msg->nFlashOffset;
 				//send to device.
 				IcdGetSam.sHeader.nSequence = nTxSeq++;
+
 				CDC_Transmit_FS((uint8_t*)&(IcdGetSam.sHeader),sizeof(usb_requested_samples_type));
 				break;
 				}

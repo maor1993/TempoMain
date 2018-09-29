@@ -73,6 +73,7 @@ typedef struct{
 typedef struct{
 	usb_msg_header_type sHeader;
 	uint16_t nSamples[16];
+	uint32_t nRequestedSamples;
 }usb_requested_samples_type;
 
 
