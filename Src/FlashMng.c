@@ -47,9 +47,18 @@ uint8_t flash_mgmt_init()
 				sCurrentHeader.nSectorStart++;
 			}
 
+
 			sCurrentHeader.nNumOfSamples = 0;
 
-			return 0;
+			if(sCurrentHeader.nSectorStart > FLASH_RECORDING_SECTORS )
+			{
+				return 1; //we filled the flash...
+			}
+			else
+			{
+				return 0;
+			}
+
 		}
 		else
 		{
@@ -59,7 +68,6 @@ uint8_t flash_mgmt_init()
 			sst_flash_read_cmd(FLASH_FILE_HEADERS_ADDR+(nCurrentRecNum*0x1000),sizeof(flash_file_header_type),(uint8_t*)&(sNextHeader.Signature));
 		}
 	}
-//todo: add checks if  sector start is out of range.
 
 	//if we're here, we're full...
 	return 1;

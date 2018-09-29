@@ -78,7 +78,6 @@ void BuildAndSendStatusMsg()
 
 void process_rx_msg()
 {
-	//todo: is it safe to assume that message is always aligned?
 	//step 1: verify alignment.
 
 	if((UserRxBufferFS[3] == 0x9a) && (UserRxBufferFS[2] == 0x5b) && (UserRxBufferFS[1]== 0xc0) && (UserRxBufferFS[0]==0xdd))
@@ -110,7 +109,12 @@ void ParseIcdMsg()
 				  while (1);
 				break;
 				}
+				case USB_MSG_TYPE_START_COMM:
+				{
 
+				sSysHandler.eMainstate = usb_connected_state;
+				break;
+				}
 
 			}
 
@@ -142,7 +146,7 @@ void ParseIcdMsg()
 
 				//copy 16 samples to message.
 
-				//todo: race condition here...
+				//note that lcd comm needs to be stopped since this occurs in an interrupt.
 				sst_flash_read_cmd(msg->nFlashOffset,32,&(IcdGetSam.nSamples[0]));
 
 				IcdGetSam.nRequestedSamples = msg->nFlashOffset;

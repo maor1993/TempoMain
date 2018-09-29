@@ -11,21 +11,17 @@
  */
 
 /* Private variables ---------------------------------------------------------*/
-ADC_HandleTypeDef hadc;
-
-RTC_HandleTypeDef hrtc;
-
-TIM_HandleTypeDef htim1;
-
 /* USER CODE BEGIN PV */
 extern GPIO_TypeDef* pGP_LED ;
 extern	GPIO_TypeDef* pGP_BTN ;
 extern	GPIO_TypeDef* pGP_I2C ;
 extern GPIO_TypeDef* pGP_SPI;
+extern GPIO_TypeDef* pGP_ADC;
 extern I2C_TypeDef* pI2c;
 static RCC_TypeDef* pRCC =  RCC;
 TIM_TypeDef* pTIM14 = TIM14;
 EXTI_TypeDef* pEXTI = EXTI;
+ADC_TypeDef* pADC = ADC;
 SYSCFG_TypeDef* pSYSCFG = SYSCFG;
 /* Private variables ---------------------------------------------------------*/
 
@@ -82,38 +78,46 @@ void SystemClock_Config(void)
  void MX_ADC_Init(void)
 {
 
-  ADC_ChannelConfTypeDef sConfig;
+
+	 //step 1: setup the analog sample gpio.
+	 pGP_ADC->MODER |= GPIO_MODER_MODER2;
+
+	 //setup the adc controller.
+
+
+
+
 
     /**Configure the global features of the ADC (Clock, Resolution, Data Alignment and number of conversion)
     */
-  hadc.Instance = ADC1;
-  hadc.Init.ClockPrescaler = ADC_CLOCK_ASYNC_DIV1;
-  hadc.Init.Resolution = ADC_RESOLUTION_12B;
-  hadc.Init.DataAlign = ADC_DATAALIGN_RIGHT;
-  hadc.Init.ScanConvMode = ADC_SCAN_DIRECTION_FORWARD;
-  hadc.Init.EOCSelection = ADC_EOC_SINGLE_CONV;
-  hadc.Init.LowPowerAutoWait = DISABLE;
-  hadc.Init.LowPowerAutoPowerOff = DISABLE;
-  hadc.Init.ContinuousConvMode = DISABLE;
-  hadc.Init.DiscontinuousConvMode = DISABLE;
-  hadc.Init.ExternalTrigConv = ADC_SOFTWARE_START;
-  hadc.Init.ExternalTrigConvEdge = ADC_EXTERNALTRIGCONVEDGE_NONE;
-  hadc.Init.DMAContinuousRequests = DISABLE;
-  hadc.Init.Overrun = ADC_OVR_DATA_PRESERVED;
-  if (HAL_ADC_Init(&hadc) != HAL_OK)
-  {
-    Error_Handler();
-  }
+//  hadc.Instance = ADC1;
+//  hadc.Init.ClockPrescaler = ADC_CLOCK_ASYNC_DIV1;
+//  hadc.Init.Resolution = ADC_RESOLUTION_12B;
+//  hadc.Init.DataAlign = ADC_DATAALIGN_RIGHT;
+//  hadc.Init.ScanConvMode = ADC_SCAN_DIRECTION_FORWARD;
+//  hadc.Init.EOCSelection = ADC_EOC_SINGLE_CONV;
+//  hadc.Init.LowPowerAutoWait = DISABLE;
+//  hadc.Init.LowPowerAutoPowerOff = DISABLE;
+//  hadc.Init.ContinuousConvMode = DISABLE;
+//  hadc.Init.DiscontinuousConvMode = DISABLE;
+//  hadc.Init.ExternalTrigConv = ADC_SOFTWARE_START;
+//  hadc.Init.ExternalTrigConvEdge = ADC_EXTERNALTRIGCONVEDGE_NONE;
+//  hadc.Init.DMAContinuousRequests = DISABLE;
+//  hadc.Init.Overrun = ADC_OVR_DATA_PRESERVED;
+//  if (HAL_ADC_Init(&hadc) != HAL_OK)
+//  {
+//    Error_Handler();
+//  }
 
     /**Configure for the selected ADC regular channel to be converted.
     */
-  sConfig.Channel = ADC_CHANNEL_2;
-  sConfig.Rank = ADC_RANK_CHANNEL_NUMBER;
-  sConfig.SamplingTime = ADC_SAMPLETIME_1CYCLE_5;
-  if (HAL_ADC_ConfigChannel(&hadc, &sConfig) != HAL_OK)
-  {
-    Error_Handler();
-  }
+//  sConfig.Channel = ADC_CHANNEL_2;
+//  sConfig.Rank = ADC_RANK_CHANNEL_NUMBER;
+//  sConfig.SamplingTime = ADC_SAMPLETIME_1CYCLE_5;
+//  if (HAL_ADC_ConfigChannel(&hadc, &sConfig) != HAL_OK)
+//  {
+//    Error_Handler();
+//  }
 
 }
 
@@ -190,49 +194,6 @@ void SystemClock_Config(void)
 
 
 }
-
-/* TIM1 init function */
- void MX_TIM1_Init(void)
-{
-
-  TIM_ClockConfigTypeDef sClockSourceConfig;
-  TIM_MasterConfigTypeDef sMasterConfig;
-
-  htim1.Instance = TIM1;
-  htim1.Init.Prescaler = 0;
-  htim1.Init.CounterMode = TIM_COUNTERMODE_UP;
-  htim1.Init.Period = 0;
-  htim1.Init.ClockDivision = TIM_CLOCKDIVISION_DIV1;
-  htim1.Init.RepetitionCounter = 0;
-  htim1.Init.AutoReloadPreload = TIM_AUTORELOAD_PRELOAD_DISABLE;
-  if (HAL_TIM_Base_Init(&htim1) != HAL_OK)
-  {
-    Error_Handler();
-  }
-
-  sClockSourceConfig.ClockSource = TIM_CLOCKSOURCE_INTERNAL;
-  if (HAL_TIM_ConfigClockSource(&htim1, &sClockSourceConfig) != HAL_OK)
-  {
-    Error_Handler();
-  }
-
-  sMasterConfig.MasterOutputTrigger = TIM_TRGO_RESET;
-  sMasterConfig.MasterSlaveMode = TIM_MASTERSLAVEMODE_DISABLE;
-  if (HAL_TIMEx_MasterConfigSynchronization(&htim1, &sMasterConfig) != HAL_OK)
-  {
-    Error_Handler();
-  }
-
-}
-
-/** Configure pins as
-        * Analog
-        * Input
-        * Output
-        * EVENT_OUT
-        * EXTI
-*/
-
 
 void TIM14_init()
 {

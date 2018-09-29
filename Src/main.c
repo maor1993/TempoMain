@@ -87,17 +87,19 @@ uint32_t nLastLooptime=0;
 uint16_t nCurrentflashloc=0;
 
 const uint8_t nTimediffs[] = {1,5,10,30,60};
-const uint16_t nTim8MhzValues[] ={250,1250,2500,7500,15000};
-const uint16_t nTim1MhzValues[] ={31,156,312,937,1875};
+const uint16_t nTim8MhzValues[] ={125,625,1250,3750,7500};
+const uint16_t nTim1MhzValues[] ={16,78,156,469,938};
 
 extern I2C_TypeDef* pI2c;
 extern EXTI_TypeDef* pEXTI;
 extern TIM_TypeDef* pTIM14;
 
+
 GPIO_TypeDef* pGP_LED = GP_LED_GPIO_Port;
 GPIO_TypeDef* pGP_BTN = USR_BTN_GPIO_Port;
 GPIO_TypeDef* pGP_I2C = GPIOA;
 GPIO_TypeDef* pGP_SPI = GPIOB;
+GPIO_TypeDef* pGP_ADC = GPIOA;
 
 
 
@@ -142,6 +144,8 @@ void EXTI0_1_IRQHandler()
 			{
 				sSysHandler.bLcdoff = 0;
 				SSD1306_WRITECOMMAND(0xAF);
+				 _TIMER14_SET_COUNTER(nTim8MhzValues[sSysHandler.nSecondsBetweenSamplesidx]);
+
 			}
 			else
 			{
@@ -176,7 +180,6 @@ void TIM14_IRQHandler()
 	HAL_NVIC_ClearPendingIRQ(TIM14_IRQn);
 	//reset stop the counter and reset its value.
 
-	//todo: values needed for 1,5,20,60 secs of delay per timer.
 
 
 	_TIMER14_STOP();
@@ -205,7 +208,7 @@ int main(void)
   SystemClock_Config();
   /* Initialize all configured peripherals */
   MX_GPIO_Init();
- // MX_ADC_Init();
+  MX_ADC_Init();
   MX_I2C1_Init();
   MX_SPI1_Init();
   TIM14_init();
@@ -222,35 +225,31 @@ int main(void)
   sSysHandler.eMainstate = main_screen_state;
   sSysHandler.bLcdoff = 0;
   sSysHandler.bLog = 0;
+  RCC->CFGR &= ~(RCC_CFGR_HPRE_3|RCC_CFGR_HPRE_0);
 
   while (1)
   {
 	  sSysHandler.nCurrentTemp = lm75_get_temp_raw();
 	  logTemp();
 	  nCurrentseconds = HAL_GetTick();
-
 	  _TIMER14_START();
-	  //if(sSysHandler.bUsbconnected)
-	  //{
+	  if(sSysHandler.bUsbconnected)
+	  {
 		  ReportToPC();
-	 // }
-
+	  }
 	  //if lcd is off and we're logging, we can enter low power mode.
-	  if(sSysHandler.bLcdoff && sSysHandler.bLog)
+	  else if (sSysHandler.bLcdoff && sSysHandler.bLog)
 	  {
 		  //enable timer interrupt
 
 		  //set the core clk to 1Mhz
 		  RCC->CFGR |= RCC_CFGR_HPRE_3|RCC_CFGR_HPRE_0;
 
-		  _TIMER14_SET_COUNTER(nTim1MhzValues[sSysHandler.nSecondsBetweenSamplesidx]);
-
 		  __WFI();
 	  }
 	  else
 	  {
-		  _TIMER14_SET_COUNTER(nTim8MhzValues[sSysHandler.nSecondsBetweenSamplesidx]);
-		  update_lcd(); //todo: stop lcd communication while usb is connected.
+		  update_lcd();
 	  }
 
   /* USER CODE BEGIN 3 */
@@ -270,6 +269,7 @@ void ReportToPC()
 	if((nCurrentTime - nLastTempReport) > 1000)
 	{
 		BuildAndSendStatusMsg();
+		nLastTempReport = nCurrentTime;
 	}
 
 
@@ -313,9 +313,17 @@ void update_lcd()
 		TM_SSD1306_Puts(cWorkingStr,&TM_Font_16x26,SSD1306_COLOR_WHITE);
 
 		TM_SSD1306_GotoXY(0,52);
-		itoa(sCurrentHeader.nRecordnum,cWorkingStr,10);
-		strcat(cWorkingStr,"/200");
-		TM_SSD1306_Puts(cWorkingStr,&TM_Font_7x10,SSD1306_COLOR_WHITE);
+		if(sSysHandler.bRecordingFull)
+		{
+			TM_SSD1306_Puts("full   ",&TM_Font_7x10,SSD1306_COLOR_WHITE);
+
+		}
+		else
+		{
+			itoa(sCurrentHeader.nRecordnum,cWorkingStr,10);
+				strcat(cWorkingStr,"/200");
+			TM_SSD1306_Puts(cWorkingStr,&TM_Font_7x10,SSD1306_COLOR_WHITE);
+		}
 
 		//check if long press occured
 		if(sSysHandler.nBtnPressed == BTN_PRESS_LONG)
@@ -339,6 +347,12 @@ void update_lcd()
 				TM_SSD1306_UpdateScreen();
 				SSD1306_WRITECOMMAND(0xAE);
 				sSysHandler.bLcdoff =1;
+
+				if(sSysHandler.bLog)
+				{
+					_TIMER14_SET_COUNTER(nTim1MhzValues[sSysHandler.nSecondsBetweenSamplesidx]);
+				}
+
 			}
 			//button press was caught, remove press.
 			sSysHandler.nBtnPressed = BTN_PRESS_NONE;
